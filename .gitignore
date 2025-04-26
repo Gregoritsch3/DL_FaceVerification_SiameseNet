@@ -1,2 +1,6 @@
 data
 lfw-deepfunneled
+training_checkpoints
+data.zip
+app
+siamese_inference_model.h5
