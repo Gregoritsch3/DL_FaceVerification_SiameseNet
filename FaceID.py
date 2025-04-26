@@ -12,7 +12,7 @@ import os
 import numpy as np
 import cv2
 import tensorflow as tf
-from layers import L1Dist
+from layers import L2Dist
 
 #Building app an layout
 class CamApp(App):
@@ -28,7 +28,7 @@ class CamApp(App):
         layout.add_widget(self.button)
 
         #Loading .h5 SiameseNet model
-        self.model = tf.keras.models.load_model('siamesemodel.h5', custom_objects={'L1Dist':L1Dist})
+        self.model = tf.keras.models.load_model('siamese_inference_model.h5', custom_objects={'L2Dist':L2Dist})
 
         #Setting up video capture
         self.capture = cv2.VideoCapture(0)
@@ -48,20 +48,17 @@ class CamApp(App):
         img_texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='bgr')
         img_texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
         self.webcam.texture = img_texture
-
-    #Defining image preprocessing function 
-    def preprocess(self, file_path):
-        #Loading
-        byte_img = tf.io.read_file(file_path)
-        img = tf.io.decode_jpeg(byte_img)
-        #Resizing
-        img = tf.image.resize(img, (100, 100))
-        #Scaling
-        img = img / 255.0
-        return img
     
+    def preprocess_for_inference(self, file_path):
+        byte_img = tf.io.read_file(file_path)
+        img = tf.io.decode_jpeg(byte_img, channels=3)
+        img = tf.image.resize(img, (105, 105))
+        img = img / 255.0
+        #img = np.expand_dims(img, axis=0)
+        return img
+       
     #Defining verification function
-    def verify(self, instance, detection_threshold=0.995, verification_threshold=0.8):
+    def verify(self, instance, detection_threshold=0.995, verification_threshold=0.1):
         #Capture input image from webcam
         SAVE_PATH = os.path.join('application_data', 'input_image', 'input_image.jpg')
         ret, frame = self.capture.read()
@@ -72,19 +69,17 @@ class CamApp(App):
         results = []
         #Loop through verification_images folder
         for image in os.listdir(os.path.join('application_data', 'verification_images')):
-            input_img = self.preprocess(os.path.join('application_data', 'input_image', 'input_image.jpg'))
-            validation_img = self.preprocess(os.path.join('application_data', 'verification_images', image))
+            input_img = self.preprocess_for_inference(os.path.join('application_data', 'input_image', 'input_image.jpg'))
+            validation_img = self.preprocess_for_inference(os.path.join('application_data', 'verification_images', image))
 
             #Make predictions
             result = self.model.predict(list(np.expand_dims([input_img, validation_img], axis=1)), verbose=0)
+            print("RESULTS::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n", result)
             results.append(result)#[0][0])
 
 
-        #Detection criteria
-        detection = np.sum(np.array(results) > detection_threshold)
         #Verification criteria
-        verification = detection / len(os.listdir(os.path.join('application_data', 'verification_images')))
-        verified = verification > verification_threshold
+        verified = result < verification_threshold
 
         #Update verification text
         self.verification_label.text = 'Verified' if verified else 'Unverified'
