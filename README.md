@@ -1,1 +1,2 @@
 # DL_FaceVerification_SiameseNet
+A DL project that incorporates the SiameseNet architecture after Gregory Koch et al. for One-shot Image Recognition (with N=1). The TensorFlow model with Triplet Loss and a custom L2 Distance Layer is integrated into a Kivy app using OpenCV and performs inference in real-time. Idea based on a guided DL project but substantially elaborated. The Python Notebook contains comments in English.
